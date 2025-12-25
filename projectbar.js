@@ -1,6 +1,6 @@
 /**
- * BlackICE Portal Widget v3.3
- * Features: Crisp Chat Integration, Modern Tooltip, Draggable, Glassmorphism
+ * BlackICE Portal Widget v3.4
+ * Features: Full-screen Iframe Overlay, Crisp Chat, Draggable Button, Glassmorphism
  */
 
 (function() {
@@ -10,11 +10,11 @@
         constructor() {
             this.dbUrl = "https://h-90-8a7c5-default-rtdb.firebaseio.com/sites.json";
             this.osUrl = "https://black-ice-3dbk.onrender.com/scrapsites/osapk.html";
-            this.crispId = "53f77668-00a3-4f45-8b0e-dd4d7c27ecdf"; // Your Crisp ID
+            this.crispId = "53f77668-00a3-4f45-8b0e-dd4d7c27ecdf"; 
             
             this.theme = {
                 font: "'Inter Tight', -apple-system, BlinkMacSystemFont, sans-serif",
-                glassBg: "rgba(9, 9, 11, 0.85)", 
+                glassBg: "rgba(9, 9, 11, 0.95)", 
                 glassBorder: "rgba(255, 255, 255, 0.08)",
                 accent: "#3b82f6",
                 textMain: "#ffffff",
@@ -28,14 +28,13 @@
 
         init() {
             this.loadFonts();
-            this.loadCrisp(); // NEW: Load Crisp
+            this.loadCrisp();
             this.injectStyles();
             this.createElements();
             this.setupDraggable();
             this.setupActions();
             this.fetchProjects();
             
-            // Auto-hide tooltip
             setTimeout(() => {
                 const tooltip = document.getElementById('bi-drag-tip');
                 if(tooltip) tooltip.style.opacity = '0';
@@ -49,19 +48,14 @@
             document.head.appendChild(link);
         }
 
-        // --- NEW: Crisp Integration Logic ---
         loadCrisp() {
             window.$crisp = [];
             window.CRISP_WEBSITE_ID = this.crispId;
-            
-            // Inject Script
             const d = document;
             const s = d.createElement("script");
             s.src = "https://client.crisp.chat/l.js";
             s.async = 1;
             d.getElementsByTagName("head")[0].appendChild(s);
-
-            // Logic to keep Crisp hidden until called
             window.$crisp.push(["do", "chat:hide"]);
             window.$crisp.push(["on", "chat:closed", () => {
                 window.$crisp.push(["do", "chat:hide"]);
@@ -106,18 +100,15 @@
                 }
                 #bi-trigger:active { cursor: grabbing; transform: scale(0.95); }
                 
-                /* Grip Lines */
                 .bi-grip-lines { display: flex; gap: 2px; margin-top: 4px; opacity: 0.4; }
                 .bi-grip-line { width: 12px; height: 2px; background: white; border-radius: 2px; }
 
-                /* Icons */
                 .bi-icon-wrap { position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
                 #bi-trigger svg { position: absolute; width: 24px; height: 24px; transition: all 0.4s ease; }
                 #bi-trigger.open .bi-menu-icon { transform: rotate(90deg); opacity: 0; }
                 .bi-close-icon { opacity: 0; transform: scale(0.5); }
                 #bi-trigger.open .bi-close-icon { opacity: 1; transform: scale(1); transform: rotate(0deg); }
                 
-                /* --- TOOLTIP --- */
                 #bi-drag-tip {
                     position: absolute; right: 70px; top: 50%; transform: translateY(-50%);
                     background: rgba(24, 24, 27, 0.9);
@@ -153,7 +144,6 @@
                 }
                 #bi-sidebar.open { transform: translateX(0); opacity: 1; }
                 
-                /* Header */
                 .bi-header {
                     padding: 16px 20px;
                     display: flex; align-items: center; gap: 10px;
@@ -163,7 +153,6 @@
                 .bi-logo { width: 24px; height: 24px; border-radius: 6px; background: ${this.theme.accent}; display: grid; place-items: center; color: white; font-weight: bold; font-size: 14px; flex-shrink: 0; }
                 .bi-title { font-weight: 600; font-size: 15px; color: ${this.theme.textMain}; letter-spacing: -0.02em; margin-right: auto; }
                 
-                /* Action Buttons */
                 .bi-action-btn {
                     background: rgba(255,255,255,0.05);
                     border: 1px solid rgba(255,255,255,0.1);
@@ -177,7 +166,6 @@
                 .bi-btn-os { padding: 6px 10px; gap: 6px; }
                 .bi-btn-os svg { width: 14px; height: 14px; }
                 
-                /* Search Bar */
                 .bi-search-wrap { padding: 12px 12px 4px 12px; }
                 .bi-search-box {
                     background: rgba(0,0,0,0.2);
@@ -195,17 +183,16 @@
                 }
                 .bi-input::placeholder { color: #52525b; }
 
-                /* Content */
                 .bi-content { flex: 1; overflow-y: auto; padding: 8px 12px; }
                 .bi-content::-webkit-scrollbar { width: 0px; background: transparent; }
                 
-                /* Cards */
                 .bi-card {
                     display: flex; align-items: center; gap: 14px;
                     padding: 12px; margin-bottom: 4px;
                     border-radius: 12px; text-decoration: none;
                     transition: all 0.2s ease;
                     background: transparent; border: 1px solid transparent;
+                    cursor: pointer;
                 }
                 .bi-card:hover {
                     background: rgba(255,255,255,0.03);
@@ -221,7 +208,34 @@
                 .bi-card-title { color: #f4f4f5; font-size: 14px; font-weight: 500; }
                 .bi-card-desc { color: #71717a; font-size: 11px; }
 
-                /* Overlay */
+                /* --- IFRAME OVERLAY (Full Screen Project View) --- */
+                #bi-iframe-container {
+                    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+                    background: #000; z-index: 2147483645; /* Below button/sidebar */
+                    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+                    display: flex; flex-direction: column;
+                }
+                #bi-iframe-container.active { opacity: 1; pointer-events: auto; }
+                
+                #bi-iframe-header {
+                    height: 50px; background: #09090b; border-bottom: 1px solid #27272a;
+                    display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+                }
+                #bi-iframe-title { font-weight: 600; font-size: 14px; color: white; }
+                #bi-iframe-close {
+                    background: #27272a; border: none; color: #a1a1aa;
+                    width: 30px; height: 30px; border-radius: 6px;
+                    display: flex; align-items: center; justify-content: center;
+                    cursor: pointer; transition: all 0.2s;
+                }
+                #bi-iframe-close:hover { background: #ef4444; color: white; }
+                
+                #bi-iframe {
+                    flex: 1; width: 100%; border: none; background: white;
+                }
+                
+                /* Main Overlay Backdrop */
                 #bi-overlay {
                     position: fixed; inset: 0; background: rgba(0,0,0,0.3);
                     backdrop-filter: blur(4px); z-index: 2147483645;
@@ -235,10 +249,26 @@
         }
 
         createElements() {
+            // 1. Sidebar Overlay Backdrop
             this.overlay = document.createElement('div');
             this.overlay.id = 'bi-overlay';
             this.overlay.onclick = () => this.toggle();
-            
+
+            // 2. Fullscreen Iframe Container (Hidden initially)
+            this.iframeContainer = document.createElement('div');
+            this.iframeContainer.id = 'bi-iframe-container';
+            this.iframeContainer.className = 'bi-root';
+            this.iframeContainer.innerHTML = `
+                <div id="bi-iframe-header">
+                    <span id="bi-iframe-title">Project View</span>
+                    <button id="bi-iframe-close" title="Close Project">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <iframe id="bi-iframe" src="about:blank"></iframe>
+            `;
+
+            // 3. Trigger Button
             const menuIcon = `<svg class="bi-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
             const closeIcon = `<svg class="bi-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
@@ -250,6 +280,7 @@
                 <div class="bi-grip-lines"><div class="bi-grip-line" style="width:4px"></div><div class="bi-grip-line" style="width:16px"></div><div class="bi-grip-line" style="width:4px"></div></div>
             `;
             
+            // 4. Sidebar
             this.sidebar = document.createElement('div');
             this.sidebar.id = 'bi-sidebar';
             this.sidebar.className = 'bi-root';
@@ -257,16 +288,12 @@
                 <div class="bi-header">
                     <div class="bi-logo">B</div>
                     <div class="bi-title">BlackICE</div>
-                    
-                    <!-- NEW: Chat Button -->
                     <button id="bi-chat-btn" class="bi-action-btn" title="Support Chat">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                     </button>
-                    
                     <button id="bi-fs-btn" class="bi-action-btn" title="Toggle Fullscreen">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
                     </button>
-                    
                     <button id="bi-os-btn" class="bi-action-btn bi-btn-os">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
                         OS
@@ -283,7 +310,7 @@
                 </div>
             `;
 
-            document.body.append(this.overlay, this.btn, this.sidebar);
+            document.body.append(this.iframeContainer, this.overlay, this.btn, this.sidebar);
         }
 
         setupActions() {
@@ -293,7 +320,6 @@
                 else document.exitFullscreen();
             };
             
-            // NEW: Open Crisp Chat
             document.getElementById('bi-chat-btn').onclick = () => {
                 window.$crisp.push(["do", "chat:open"]);
                 window.$crisp.push(["do", "chat:show"]);
@@ -303,6 +329,11 @@
                 const term = e.target.value.toLowerCase();
                 const filtered = this.allProjects.filter(p => (p.title || '').toLowerCase().includes(term));
                 this.renderProjects(filtered);
+            };
+
+            // Close Iframe
+            document.getElementById('bi-iframe-close').onclick = () => {
+                this.closeProject();
             };
         }
 
@@ -329,10 +360,11 @@
             }
             projects.forEach(p => {
                 const screenshot = `https://api.microlink.io/?url=${encodeURIComponent(p.url)}&screenshot=true&meta=false&embed=screenshot.url&viewport.width=800&viewport.height=600`;
-                const el = document.createElement('a');
+                const el = document.createElement('div'); // Changed from <a> to <div>
                 el.className = 'bi-card';
-                el.href = p.url;
-                el.target = "_blank";
+                // Remove href, add onclick
+                el.onclick = () => this.openProject(p.url, p.title);
+                
                 el.innerHTML = `
                     <img src="${screenshot}" class="bi-card-img" loading="lazy" />
                     <div class="bi-card-info">
@@ -343,6 +375,34 @@
                 list.appendChild(el);
             });
         }
+        
+        // NEW: Open Project in Iframe
+        openProject(url, title) {
+            const iframe = document.getElementById('bi-iframe');
+            const container = document.getElementById('bi-iframe-container');
+            const titleEl = document.getElementById('bi-iframe-title');
+            
+            titleEl.innerText = title || 'Project View';
+            iframe.src = url;
+            container.classList.add('active');
+            
+            // Close the sidebar automatically for better view
+            this.toggle(); 
+        }
+
+        // NEW: Close Project Iframe
+        closeProject() {
+            const container = document.getElementById('bi-iframe-container');
+            const iframe = document.getElementById('bi-iframe');
+            
+            container.classList.remove('active');
+            setTimeout(() => {
+                iframe.src = 'about:blank'; // Clear source to stop audio/video
+            }, 300);
+            
+            // Re-open sidebar so user can choose another
+            this.toggle();
+        }
 
         setupDraggable() {
             let isDragging = false;
@@ -351,7 +411,7 @@
 
             const onDown = (e) => {
                 const tip = document.getElementById('bi-drag-tip');
-                if(tip) tip.style.opacity = '0'; // Hide tip on touch
+                if(tip) tip.style.opacity = '0';
                 
                 const evt = e.touches ? e.touches[0] : e;
                 isDragging = true;
