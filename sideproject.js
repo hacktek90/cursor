@@ -1,7 +1,6 @@
 /**
- * BlackICE Portal Widget v4.0
- * Features: "Perfect" Iframe Scrolling (based on your source), 
- * Immersive Mode, Sidebar Controls, Crisp Chat
+ * BlackICE Portal Widget v4.1
+ * Features: Relative URL Pathing, Pinned Projects, Copy Link, Immersive Mode
  */
 
 (function() {
@@ -24,6 +23,7 @@
             
             this.isOpen = false;
             this.allProjects = [];
+            this.pinnedIds = JSON.parse(localStorage.getItem('bi_pinned') || '[]');
             this.init();
         }
 
@@ -69,7 +69,6 @@
                 .bi-root { font-family: ${this.theme.font}; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
                 .bi-root * { box-sizing: border-box; }
                 
-                /* --- TRIGGER BUTTON --- */
                 #bi-trigger {
                     position: fixed; bottom: 30px; right: 30px;
                     width: 56px; height: 56px;
@@ -77,7 +76,6 @@
                     border: 1px solid ${this.theme.glassBorder};
                     border-radius: 18px;
                     cursor: grab;
-                    /* Ensure button is ALWAYS above the iframe container (z-index 2147483645) */
                     z-index: 2147483647; 
                     display: flex; flex-direction: column; align-items: center; justify-content: center;
                     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0,0,0,0.5);
@@ -136,7 +134,7 @@
                     backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
                     border: 1px solid ${this.theme.glassBorder};
                     border-radius: 24px;
-                    z-index: 2147483646; /* Just below trigger */
+                    z-index: 2147483646;
                     transform: translateX(120%);
                     opacity: 0;
                     transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
@@ -191,6 +189,7 @@
                 .bi-content { flex: 1; overflow-y: auto; padding: 8px 12px; }
                 .bi-content::-webkit-scrollbar { width: 0px; background: transparent; }
                 
+                /* --- PROJECT CARD --- */
                 .bi-card {
                     display: flex; align-items: center; gap: 14px;
                     padding: 12px; margin-bottom: 4px;
@@ -198,12 +197,15 @@
                     transition: all 0.2s ease;
                     background: transparent; border: 1px solid transparent;
                     cursor: pointer;
+                    position: relative;
                 }
                 .bi-card:hover {
                     background: rgba(255,255,255,0.03);
                     border-color: ${this.theme.glassBorder};
                     transform: translateX(4px);
                 }
+                .bi-card.pinned { border-left: 2px solid ${this.theme.accent}; background: rgba(59,130,246,0.05); }
+
                 .bi-card-img {
                     width: 38px; height: 38px; border-radius: 10px;
                     background: #27272a; object-fit: cover;
@@ -213,27 +215,34 @@
                 .bi-card-title { color: #f4f4f5; font-size: 14px; font-weight: 500; }
                 .bi-card-desc { color: #71717a; font-size: 11px; }
 
-                /* --- OPTIMIZED IFRAME CONTAINER (From paste.txt technique) --- */
+                /* Card Actions (Hover) */
+                .bi-card-actions {
+                    display: flex; gap: 4px;
+                    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+                }
+                .bi-card:hover .bi-card-actions { opacity: 1; pointer-events: auto; }
+                
+                .bi-card-btn {
+                    padding: 6px; border-radius: 6px; color: #71717a;
+                    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+                    transition: all 0.2s;
+                }
+                .bi-card-btn:hover { color: white; background: rgba(255,255,255,0.1); }
+                .bi-card-btn.active-pin { color: ${this.theme.accent}; border-color: ${this.theme.accent}; background: rgba(59,130,246,0.1); }
+
+
                 #bi-iframe-container {
-                    position: fixed; 
-                    inset: 0; /* Modern shorthand for top/right/bottom/left: 0 */
-                    width: 100%; height: 100%;
-                    background: #fff; /* Match source background */
-                    z-index: 2147483645; 
+                    position: fixed; inset: 0; width: 100%; height: 100%;
+                    background: #fff; z-index: 2147483645; 
                     opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
                 }
                 #bi-iframe-container.active { opacity: 1; pointer-events: auto; }
                 
                 #bi-iframe {
-                    position: absolute; 
-                    inset: 0;
-                    width: 100%; height: 100%;
-                    border: 0; 
-                    display: block; /* CRITICAL: Removes bottom ghost space */
-                    background: #fff;
+                    position: absolute; inset: 0; width: 100%; height: 100%;
+                    border: 0; display: block; background: #fff;
                 }
                 
-                /* Overlay Backdrop */
                 #bi-overlay {
                     position: fixed; inset: 0; background: rgba(0,0,0,0.3);
                     backdrop-filter: blur(4px); z-index: 2147483645;
@@ -247,18 +256,15 @@
         }
 
         createElements() {
-            // 1. Sidebar Overlay Backdrop
             this.overlay = document.createElement('div');
             this.overlay.id = 'bi-overlay';
             this.overlay.onclick = () => this.toggle();
 
-            // 2. Fullscreen Iframe (Using allow attrs from source)
             this.iframeContainer = document.createElement('div');
             this.iframeContainer.id = 'bi-iframe-container';
             this.iframeContainer.className = 'bi-root';
             this.iframeContainer.innerHTML = `<iframe id="bi-iframe" src="about:blank" allow="fullscreen; clipboard-read; clipboard-write; geolocation; microphone; camera; midi; encrypted-media; autoplay"></iframe>`;
 
-            // 3. Trigger Button
             const menuIcon = `<svg class="bi-menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
             const closeIcon = `<svg class="bi-close-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
 
@@ -270,7 +276,6 @@
                 <div class="bi-grip-lines"><div class="bi-grip-line" style="width:4px"></div><div class="bi-grip-line" style="width:16px"></div><div class="bi-grip-line" style="width:4px"></div></div>
             `;
             
-            // 4. Sidebar
             this.sidebar = document.createElement('div');
             this.sidebar.id = 'bi-sidebar';
             this.sidebar.className = 'bi-root';
@@ -278,11 +283,9 @@
                 <div class="bi-header">
                     <div class="bi-logo">B</div>
                     <div class="bi-title">BlackICE</div>
-                    
                     <button id="bi-home-btn" class="bi-action-btn" title="Exit App / Home">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     </button>
-
                     <button id="bi-chat-btn" class="bi-action-btn" title="Support Chat">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
                     </button>
@@ -352,11 +355,42 @@
                 list.innerHTML = `<div style="padding:20px; text-align:center; color:#52525b; font-size:12px;">No results found.</div>`;
                 return;
             }
+
+            // Separate pinned projects
+            const pinned = [];
+            const others = [];
+
             projects.forEach(p => {
+                if(this.pinnedIds.includes(p.id)) pinned.push(p);
+                else others.push(p);
+            });
+
+            // Render Function
+            const createCard = (p, isPinned) => {
                 const screenshot = `https://api.microlink.io/?url=${encodeURIComponent(p.url)}&screenshot=true&meta=false&embed=screenshot.url&viewport.width=800&viewport.height=600`;
+                
+                // --- NEW URL LOGIC ---
+                // 1. Create a URL object from the fetched URL
+                let finalUrl = p.url;
+                try {
+                    const u = new URL(p.url);
+                    // 2. Combine current origin + fetched path
+                    // e.g. https://my-host.com + /scrapsites/page.html
+                    finalUrl = window.location.origin + u.pathname; 
+                } catch(e) {
+                    // Fallback if p.url is relative or invalid
+                    console.log("URL parse error, using original", e);
+                }
+
                 const el = document.createElement('div'); 
-                el.className = 'bi-card';
-                el.onclick = () => this.openProject(p.url, p.title);
+                el.className = `bi-card ${isPinned ? 'pinned' : ''}`;
+                
+                // Click event for the CARD (opens project)
+                el.onclick = (e) => {
+                    // Prevent opening if clicked on buttons
+                    if (e.target.closest('.bi-card-btn')) return;
+                    this.openProject(finalUrl, p.title);
+                };
                 
                 el.innerHTML = `
                     <img src="${screenshot}" class="bi-card-img" loading="lazy" />
@@ -364,9 +398,62 @@
                         <div class="bi-card-title">${p.title || 'Untitled Project'}</div>
                         <div class="bi-card-desc">Click to launch app</div>
                     </div>
+                    <div class="bi-card-actions">
+                         <button class="bi-card-btn bi-copy-btn" title="Copy Link">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                        </button>
+                        <button class="bi-card-btn bi-pin-btn ${isPinned ? 'active-pin' : ''}" title="${isPinned ? 'Unpin' : 'Pin'}">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="${isPinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="17" x2="12" y2="22"></line><path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"></path></svg>
+                        </button>
+                    </div>
                 `;
-                list.appendChild(el);
-            });
+                
+                // Attach Button Listeners
+                const copyBtn = el.querySelector('.bi-copy-btn');
+                copyBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    navigator.clipboard.writeText(finalUrl);
+                    copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                    setTimeout(() => {
+                         copyBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+                    }, 1500);
+                };
+
+                const pinBtn = el.querySelector('.bi-pin-btn');
+                pinBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    this.togglePin(p.id);
+                };
+
+                return el;
+            };
+
+            // Render Pinned First
+            pinned.forEach(p => list.appendChild(createCard(p, true)));
+            
+            // Divider if needed
+            if(pinned.length > 0 && others.length > 0) {
+                 const hr = document.createElement('div');
+                 hr.style.cssText = "height:1px; background:rgba(255,255,255,0.1); margin:8px 4px;";
+                 list.appendChild(hr);
+            }
+
+            // Render Others
+            others.forEach(p => list.appendChild(createCard(p, false)));
+        }
+
+        togglePin(id) {
+            if(this.pinnedIds.includes(id)) {
+                this.pinnedIds = this.pinnedIds.filter(pid => pid !== id);
+            } else {
+                this.pinnedIds.push(id);
+            }
+            localStorage.setItem('bi_pinned', JSON.stringify(this.pinnedIds));
+            
+            // Re-render with current filter state
+            const term = document.getElementById('bi-search').value.toLowerCase();
+            const filtered = this.allProjects.filter(p => (p.title || '').toLowerCase().includes(term));
+            this.renderProjects(filtered);
         }
         
         openProject(url, title) {
@@ -375,7 +462,6 @@
             iframe.src = url;
             container.classList.add('active');
             
-            // Lock body scroll on parent page (standard practice)
             document.body.style.overflow = 'hidden'; 
             
             this.toggle(); 
@@ -387,7 +473,6 @@
             
             container.classList.remove('active');
             
-            // Unlock body scroll
             document.body.style.overflow = '';
             
             setTimeout(() => { iframe.src = 'about:blank'; }, 300);
