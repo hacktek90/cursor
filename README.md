@@ -32,7 +32,7 @@ For right block to refer block html
 <script src="https://cdn.jsdelivr.net/gh/hacktek90/cursor@main/rightclkblock.js" defer></script>
 ````
 ```html
-<script src="https://cdn.jsdelivr.net/gh/hacktek90/cursor@main/sideproject.js" defer></script>
+<script src="https://cdn.jsdelivr.net/gh/hacktek90/cursor@main/portalside.js" defer></script>
 ````
 
 
